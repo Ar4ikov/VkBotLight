@@ -4,3 +4,4 @@
 from vkbotlight.vkbotloght import VkBotLight
 from vkbotlight.objects import VkBotLight_Logger
 from vkbotlight.objects import VkBotLight_PollingType
+from vkbotlight.enums import VkBotLight_Events

@@ -12,6 +12,8 @@ from flask import Flask, session, jsonify, render_template
 from flask import request as fr
 import logging
 
+from vkbotlight.enums import VkBotLight_Events
+
 
 class PollingTask(Thread):
     def __init__(self, emitter, *data, **kw_data):
@@ -43,8 +45,8 @@ class VkBotLight_Callback(Flask):
         self.HOST = Final(host)
         self.PORT = Final(port)
 
-    def is_alive(self):
-        return self.root.polling_thread.is_alive()
+    # def is_alive(self):
+    #     return self.root.polling_thread.is_alive()
 
     def start(self, *args, **kwargs):
 
@@ -244,9 +246,9 @@ class VkBotLight_Emitter(VkBotLight_Thread):
         else:
             yield None
 
-    def on(self, event):
+    def on(self, event: VkBotLight_Events):
         def deco(func, **data):
-            self.callers.append({"event": event, "func": func, "data": data})
+            self.callers.append({"event": event.value, "func": func, "data": data})
 
         return deco
 
@@ -258,7 +260,7 @@ class VkBotLight_Emitter(VkBotLight_Thread):
             self.events.append([event[0], data])
 
     def run(self):
-        print(" * Starting Emitter Thread...")
+        # print(" * Starting Emitter Thread...")
         while True:
 
             event = next(self.get_new_event())
