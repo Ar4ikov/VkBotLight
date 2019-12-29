@@ -86,7 +86,8 @@ class VkBotLight:
     def methods(self):
         return self.api_method_cls("", self)
 
-    def polling(self, secret_key, confirmation_key, polling_type: VkBotLight_PollingType = None, *args, **kwargs):
+    def polling(self, polling_type: VkBotLight_PollingType = VkBotLight_PollingType.LONG_POLL, secret_key=None,
+                confirmation_key=None, *args, **kwargs):
 
         if self.TOKEN_INFO["type"] == "user":
             raise VkBotLight_Error("Cannot start LongPoll protocol using User Authorization.")
@@ -94,7 +95,7 @@ class VkBotLight:
         self.SECRET_KEY = Final(secret_key)
         self.CONFIRMATION_KEY = Final(confirmation_key)
 
-        self.polling_thread = polling_type.value(self, secret_key=self.SECRET_KEY, confirmation_key=self.CONFIRMATION_KEY,
+        self.polling_thread = polling_type.value(self, secret_key=self.SECRET_KEY,
+                                                 confirmation_key=self.CONFIRMATION_KEY,
                                                  host=kwargs.get("host"), port=kwargs.get("port"))
         self.polling_thread.start()
-
