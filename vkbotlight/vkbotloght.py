@@ -1,16 +1,12 @@
 # | Created by Ar4ikov
 # | Время: 27.12.2019 - 00:43
 
-from threading import Thread, main_thread
-from flask import Flask, session, jsonify, render_template
-from flask import request as fr
-import logging
-from time import sleep
 from requests import Session
 from json import loads
 from os import path
 
-from vkbotlight.objects import VkBotLight_Emitter, VkBotLight_Data, VkBotLight_ApiPool
+from vkbotlight.objects import VkBotLight_Emitter, VkBotLight_ApiPool, VkBotLight_Error, \
+    VkBotLight_Logger, Final, VkBotLight_PollingType
 
 
 # TODO:
@@ -18,47 +14,18 @@ from vkbotlight.objects import VkBotLight_Emitter, VkBotLight_Data, VkBotLight_A
 #  * Доделать класс для вывода в эммитер бота (проработать структуру, обработать ответ);
 #  * Написать юнит-тесты и документацию;
 #  * (+) Создать рабочее и удобное клиентское Api для кнопок ботов;
-#  * Переделать ООП в районе запуска пулинга (вынести отдельными классами Callback и BotLongPoll, подключать в init)
 
+class VkBotLight:
+    def __init__(self, access_token, api_version=None):
 
-class VkBotLight(Flask):
-    def __init__(self, access_token, secret_key, confirmation_key, api_version=None):
-        super().__init__(__name__)
-
-        class Final:
-            def __init__(self, value):
-                self.value = value
-
-            def __setattr__(self, key, value):
-                if key in self.__dict__:
-                    raise AttributeError("Cannot edit a Final.")
-                else:
-                    self.__dict__.update({key: value})
-
-                    return None
-
-            def __str__(self):
-                return self.value
-
-            def __enter__(self):
-                return self.value
-
-            def __exit__(self, *_):
-                return True
-
-            def get(self):
-                return self.value
-
-        self.log = logging.getLogger("werkzeug")
-        self.log.setLevel(logging.ERROR)
-        self.log.disabled = True
+        self.logging = VkBotLight_Logger("logs")
 
         # Сессия запросов
         self.name = "VkBotLight-1"
         self.session = Session()
 
         # Ивент пул, метод пул и полинг пул
-        self.app_thread = type("Thread", (object,), {"is_alive": lambda: False})
+        self.polling_thread = type("Thread", (object,), {"is_alive": lambda: False})
         self.event = VkBotLight_Emitter(self)
         self.method_pool = VkBotLight_ApiPool(self)
 
@@ -67,14 +34,20 @@ class VkBotLight(Flask):
         self.API_URL = Final("https://api.vk.com")
         self.API_VERSION = Final(api_version or "5.103")
         self.ACCESS_TOKEN = Final(access_token)
-        self.SECRET_KEY = Final(secret_key)
-        self.CONFIRMATION_KEY = Final(confirmation_key)
 
         with Final(self.make_request("groups.getById")) as token_info:
             if "error" in token_info:
-                self.TOKEN_INFO = Final(self.make_request("users.get")["response"]).get()
+                if token_info["error"]["error_code"] == 100:
+                    self.TOKEN_INFO = Final(self.make_request("users.get").get("response")[0]).get()
+
+                else:
+                    # TODO: Подумать, почему тут не работает raise в with блоке
+                    raise VkBotLight_Error("Failed to authenticate: invalid access_token.")
+
             else:
-                self.TOKEN_INFO = token_info
+                self.TOKEN_INFO = token_info.get("response")[0]
+
+            self.TOKEN_INFO.update({"token_type": "group" if "name" in self.TOKEN_INFO.keys() else "user"})
 
         self.__version__ = open(path.join(path.dirname(__file__), "version.txt"), "r").read()
 
@@ -113,44 +86,15 @@ class VkBotLight(Flask):
     def methods(self):
         return self.api_method_cls("", self)
 
-    def polling(self, polling_type=None, *args, **kwargs):
-        class PollingRunner(Thread):
-            def __init__(self, emitter, *data, **kw_data):
-                super().__init__()
+    def polling(self, secret_key, confirmation_key, polling_type: VkBotLight_PollingType = None, *args, **kwargs):
 
-                self.emitter = emitter
-                self.data = data
-                self.kw_data = kw_data
+        if self.TOKEN_INFO["type"] == "user":
+            raise VkBotLight_Error("Cannot start LongPoll protocol using User Authorization.")
 
-            def run(self):
-                return self.emitter(*self.data)
+        self.SECRET_KEY = Final(secret_key)
+        self.CONFIRMATION_KEY = Final(confirmation_key)
 
-        kwargs.update({"threaded": True, "debug": False, "load_dotenv": False})
+        self.polling_thread = polling_type.value(self, secret_key=self.SECRET_KEY, confirmation_key=self.CONFIRMATION_KEY,
+                                                 host=kwargs.get("host"), port=kwargs.get("port"))
+        self.polling_thread.start()
 
-        @self.route("/")
-        def index():
-            return jsonify(str({"status": True, "version": self.__version__}))
-
-        @self.route("/robots.txt")
-        def robots():
-            return open(path.join(path.dirname(__file__), "robots.txt"), "r").read()
-
-        @self.route("/callback", methods=["GET", "POST"])
-        def callback():
-            data = fr.args.to_dict() or fr.json or fr.data or fr.form or {}
-
-            if data.get("type") == "confirmation":
-                return str(self.CONFIRMATION_KEY)
-
-            if data.get("secret") != str(self.SECRET_KEY):
-                return jsonify(str({"status": False, "error": "Invalid secret key!"}))
-
-            _TYPE = data.pop("type")
-            PollingRunner(self.event.emit, _TYPE, VkBotLight_Data(_TYPE, **data)).start()
-
-            return "ok"
-
-        # super().run(*args, **kwargs)
-
-        self.app_thread = Thread(name=self.name, target=super().run, args=args, kwargs=kwargs)
-        self.app_thread.start()

@@ -9,7 +9,7 @@ class VkBotLight_Setup:
     def __init__(self):
         self.package = "vkbotlight"
 
-        self.__version__ = open(path.join(path.dirname(__file__), "src", "version.txt"), "r").read()
+        self.__version__ = open(path.join(path.dirname(__file__), "vkbotlight", "version.txt"), "r").read()
 
     def setup(self):
         setup(

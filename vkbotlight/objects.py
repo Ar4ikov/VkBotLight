@@ -8,6 +8,128 @@ from time import sleep
 from typing import List
 from uuid import uuid4 as uuid
 
+from flask import Flask, session, jsonify, render_template
+from flask import request as fr
+import logging
+
+
+class PollingTask(Thread):
+    def __init__(self, emitter, *data, **kw_data):
+        super().__init__()
+
+        self.emitter = emitter
+        self.data = data
+        self.kw_data = kw_data
+
+    def run(self):
+        return self.emitter(*self.data)
+
+
+class VkBotLight_Callback(Flask):
+    def __init__(self, root, secret_key, confirmation_key, host, port):
+        self.root = root
+
+        super().__init__(root.name)
+
+        self.root = root
+
+        self.log = logging.getLogger("werkzeug")
+        self.log.setLevel(logging.ERROR)
+        self.log.disabled = True
+
+        self.SECRET_KEY = Final(secret_key)
+        self.CONFIRMATION_KEY = Final(confirmation_key)
+
+        self.HOST = Final(host)
+        self.PORT = Final(port)
+
+    def is_alive(self):
+        return self.root.polling_thread.is_alive()
+
+    def start(self, *args, **kwargs):
+
+        kwargs.update({"threaded": True, "debug": False, "load_dotenv": False})
+        kwargs.update({"host": self.HOST.get(), "port": self.PORT.get()})
+
+        @self.route("/")
+        def index():
+            return jsonify(str({"status": True, "version": self.root.__version__}))
+
+        @self.route("/robots.txt")
+        def robots():
+            return open(path.join(path.dirname(__file__), "robots.txt"), "r").read()
+
+        @self.route("/callback", methods=["GET", "POST"])
+        def callback():
+            data = fr.args.to_dict() or fr.json or fr.data or fr.form or {}
+
+            if data.get("type") == "confirmation":
+                return str(self.CONFIRMATION_KEY.get())
+
+            print(data.get("secret"), self.SECRET_KEY.get())
+            if data.get("secret") != str(self.SECRET_KEY.get()):
+                return jsonify(str({"status": False, "error": "Invalid secret key!"}))
+
+            _TYPE = data.pop("type")
+            PollingTask(self.root.event.emit, _TYPE, VkBotLight_Data(_TYPE, **data)).start()
+
+            return "ok"
+
+        # super().run(*args, **kwargs)
+
+        self.root.polling_thread = Thread(name=self.root.name, target=super().run, args=args, kwargs=kwargs)
+        self.root.polling_thread.start()
+
+
+class VkBotLight_LongPoll(Thread):
+    def __init__(self, root, *args, **kwargs):
+        super().__init__()
+
+        self.root = root
+        self.name = self.root.name
+
+        if self.root.methods.groups.getLongPollSettings(group_id=self.root.TOKEN_INFO["id"]).get("response") \
+                ["is_enabled"] is False:
+            raise VkBotLight_Error("LongPoll is not enabled in this group.")
+
+    def initialize_parameters(self):
+        response: dict = self.root.methods.groups.getLongPollServer(group_id=self.root.TOKEN_INFO["id"]).get("response")
+
+        self.server, self.key, self.ts = response.get("server"), response.get("key"), response.get("ts")
+
+        response.update({"act": "a_check", "mode": 2, "version": 2, "wait": 25})
+
+        return response
+
+    def run(self):
+        self.statement = True
+
+        params = self.initialize_parameters()
+        server = params.pop("server")
+
+        while self.statement:
+
+            response = self.root.session.post(f"{server}", params=params)
+            response_json = response.json()
+
+            params.update({"ts": response_json.get("ts")})
+            events = response_json.get("updates")
+
+            if events is None:
+                params = self.initialize_parameters()
+            else:
+                for event in events:
+                    _TYPE = event.pop("type")
+
+                    PollingTask(self.root.event.emit, _TYPE, VkBotLight_Data(_TYPE, **event)).start()
+
+            sleep(.001)
+
+
+class VkBotLight_PollingType(Enum):
+    CALLBACK = VkBotLight_Callback
+    LONG_POLL = VkBotLight_LongPoll
+
 
 class VkBotLight_Thread(Thread):
     def __init__(self, root, **data):
@@ -16,7 +138,7 @@ class VkBotLight_Thread(Thread):
         self.root = root
 
     def check_main_thread(self):
-        return self.root.app_thread.is_alive() or main_thread().is_alive()
+        return self.root.polling_thread.is_alive() or main_thread().is_alive()
 
 
 class VkBotLight_ApiPool(VkBotLight_Thread):
@@ -162,12 +284,12 @@ class VkBotLight_Data:
         return f"<{self.__class__.__name__}.{self._type.upper()} Type>"
 
 
-class VKBotLight_Logger:
+class VkBotLight_Logger:
     class Types(Enum):
-        FUNCTION_LOGGING    = "[LOG]"
-        WARNING_LOGGING     = "[WARN]"
-        ERROR_LOGGING       = "[ERROR]"
-        SYSTEM_LOGGING      = "[SYSTEM]"
+        FUNCTION_LOGGING = "[LOG]"
+        WARNING_LOGGING = "[WARN]"
+        ERROR_LOGGING = "[ERROR]"
+        SYSTEM_LOGGING = "[SYSTEM]"
 
     @staticmethod
     def get(e_: Enum):
@@ -185,3 +307,31 @@ class VKBotLight_Logger:
 
         with open(f"{self.log_dir}/{dt.year}_{dt.month}_{dt.day}.txt", "a+") as file:
             file.write(f"[{dt.year}-{dt.month}-{dt.day} {time_}] {self.get(log_type)} {log_text}\n")
+
+
+class VkBotLight_Error(Exception): ...
+
+
+class Final:
+    def __init__(self, value):
+        self.value = value
+
+    def __setattr__(self, key, value):
+        if key in self.__dict__:
+            raise AttributeError("Cannot edit a Final.")
+        else:
+            self.__dict__.update({key: value})
+
+            return None
+
+    def __str__(self):
+        return self.value
+
+    def __enter__(self):
+        return self.value
+
+    def __exit__(self, *_):
+        return True
+
+    def get(self):
+        return self.value
