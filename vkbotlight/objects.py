@@ -68,7 +68,7 @@ class VkBotLight_Callback(Flask):
             if data.get("type") == "confirmation":
                 return str(self.CONFIRMATION_KEY.get())
 
-            print(data.get("secret"), self.SECRET_KEY.get())
+            # print(data.get("secret"), self.SECRET_KEY.get())
             if data.get("secret") != str(self.SECRET_KEY.get()):
                 return jsonify(str({"status": False, "error": "Invalid secret key!"}))
 

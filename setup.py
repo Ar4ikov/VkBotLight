@@ -17,12 +17,14 @@ class VkBotLight_Setup:
             version=self.__version__,
             install_requires=["flask", "requests"],
             packages=[self.package],
-            package_data={self.package: self.__version__},
+            package_data={self.package: ["*.txt", "*.json"]},
+            include_package_data=True,
             url="https://github.com/Ar4ikov/VkBotLight",
             license="MIT Licence",
             author="Nikita Archikov",
             author_email="bizy18588@gmail.com",
             description="A VK Wrapper for easily creating your own bots",
+            long_description=open("readme.md", "r").read(),
             keywords="opensource vk bot vkbot vkapi api vkbotlight vklight vk_bot_light vk_light vk_api vk_bot_api"
         )
 
