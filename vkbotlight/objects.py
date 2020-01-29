@@ -357,7 +357,8 @@ class VkBotLight_Keyboard:
             return button
 
     def add_row(self):
-        self.buttons.append([])
+        if len(self.buttons[-1]) > 0:
+            self.buttons.append([])
 
         return True
 
