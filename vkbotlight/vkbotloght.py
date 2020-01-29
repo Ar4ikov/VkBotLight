@@ -6,14 +6,12 @@ from json import loads
 from os import path
 
 from vkbotlight.objects import VkBotLight_Emitter, VkBotLight_ApiPool, VkBotLight_Error, \
-    VkBotLight_Logger, Final, VkBotLight_PollingType
+    VkBotLight_Logger, Final, VkBotLight_PollingType, VkBotLight_Data
 
 
 # TODO:
 #  * Интегрировать в Api обработчик ошибок и обработчик каптчи (не забудь пополнить счет на rucaptcha.com)
-#  * Доделать класс для вывода в эммитер бота (проработать структуру, обработать ответ);
 #  * Написать юнит-тесты и документацию;
-#  * (+) Создать рабочее и удобное клиентское Api для кнопок ботов;
 
 class VkBotLight:
     def __init__(self, access_token, api_version=None):
@@ -61,7 +59,7 @@ class VkBotLight:
 
             def __call__(self, *args, **kwargs):
                 if args:
-                    raise ValueError("Do no use non-named arguments. ")
+                    raise ValueError("Do not use non-named arguments. ")
 
                 method = VkBotLight_ApiPool.VkMethodObject(self.method, **kwargs)
                 self.root.method_pool.queue(method)
@@ -72,15 +70,21 @@ class VkBotLight:
         self.api_method_cls = ApiMethod
 
     def __str__(self):
-        return f"<{self.__class__.__name__} -> Bot Id: None>"
+        return f"<{self.__class__.__name__} -> Bot Id: {self.TOKEN_INFO.get('id') or self.TOKEN_INFO.get('group_id')}>"
 
     def make_request(self, method, **data):
         request_ = f"{str(self.API_URL)}/method/{method}"
         data.update({"access_token": str(self.ACCESS_TOKEN), "v": str(self.API_VERSION)})
 
-        response = self.session.post(request_, data=data, headers=self.HEADERS)
+        non_error_statement = True
 
-        return response.json()
+        while non_error_statement:
+            response = self.session.post(request_, data=data, headers=self.HEADERS)
+            if response.json().get("error"):
+                if response.json().get("error_code") == 100:
+                    pass
+
+            return response.json()
 
     @property
     def methods(self):
@@ -89,7 +93,7 @@ class VkBotLight:
     def polling(self, polling_type: VkBotLight_PollingType = VkBotLight_PollingType.LONG_POLL, secret_key=None,
                 confirmation_key=None, *args, **kwargs):
 
-        if self.TOKEN_INFO["type"] == "user":
+        if self.TOKEN_INFO["token_type"] == "user":
             raise VkBotLight_Error("Cannot start LongPoll protocol using User Authorization.")
 
         self.SECRET_KEY = Final(secret_key)

@@ -2,6 +2,7 @@
 # | Время: 27.12.2019 - 14:15
 import datetime
 from enum import Enum
+from json import dumps
 from os import path, mkdir
 from threading import Thread, main_thread
 from time import sleep
@@ -277,13 +278,116 @@ class VkBotLight_Emitter(VkBotLight_Thread):
             sleep(.001)
 
 
+class VkBotLight_Keyboard:
+    class ButtonColors(Enum):
+        VK_PRIMARY = "primary"
+        VK_SECONDARY = "secondary"
+        VK_NEGATIVE = "negative"
+        VK_POSITIVE = "positive"
+
+    def __init__(self, one_time=False, inline=False, **data):
+        self.app_hash = data.get("hash")
+        self.app_id = data.get("app_id")
+        self.owner_id = data.get("owner_id")
+
+        self.one_time = one_time
+        self.inline = inline
+        self.buttons = [[]]
+
+    def append_single(self, button):
+
+        if len(self.buttons[-1]) == 0:
+            self.append(button)
+            self.add_row()
+        else:
+            self.add_row()
+            self.append(button)
+
+        return True
+
+    def append(self, button):
+        self.buttons[-1].append(button)
+
+        return True
+
+    @staticmethod
+    def generate_pay_hash(group_id, aid):
+        return f"action=transfer-to-group&group_id={group_id}&aid={aid}"
+
+    def text(self, text, color: ButtonColors = ButtonColors.VK_PRIMARY, payload: str = None, returns=True):
+        button = {"action": {"type": "text", "payload": payload, "label": text}, "color": color.value}
+
+        self.append(button)
+
+        if returns:
+            return button
+
+    def open_link(self, text, link, payload: str = None, returns=True):
+        button = {"action": {"type": "open_link", "link": link, "label": text, "payload": payload}}
+
+        self.append(button)
+
+        if returns:
+            return button
+
+    def location(self, payload: str = None, returns=True):
+        button = {"action": {"type": "location", "payload": payload}}
+
+        self.append_single(button)
+
+        if returns:
+            return button
+
+    def vkpay(self, pay_hash: str, payload: str = None, returns=True):
+        button = {"action": {"type": "vkpay", "hash": pay_hash, "payload": payload}}
+
+        self.append_single(button)
+
+        if returns:
+            return button
+
+    def open_app(self, app_id: int, owner_id: int, app_name: str = None, app_hash: str = "open_app", payload: str = None,
+                 returns=True):
+        button = {"action": {"type": "open_app", "app_id": app_id, "owner_id": owner_id, "payload": payload,
+                             "label": app_name, "hash": app_hash}}
+
+        self.append_single(button)
+
+        if returns:
+            return button
+
+    def add_row(self):
+        self.buttons.append([])
+
+        return True
+
+    def set_keyboard(self, buttons: list):
+        self.buttons = buttons
+
+        return True
+
+    def get(self):
+        return dumps({
+            "one_time": self.one_time if self.inline is False else False,
+            "inline": self.inline,
+            "buttons": self.buttons
+        }, sort_keys=False, ensure_ascii=False)
+
+
 class VkBotLight_Data:
-    def __init__(self, _type, **data):
+    class VkBotLight_DataStruct:
+        def __init__(self, **data):
+            [self.__dict__.update({k: v}) if not isinstance(v, dict) else self.__dict__.update(
+                {k: VkBotLight_Data.VkBotLight_DataStruct(**v)}) for k, v in data.items()]
+
+    def __init__(self, _type, is_method_data=False, **data):
         self._type: str = _type
-        [self.__dict__.update({k: v}) for k, v in data.items() if k != "secret"]
+        self.is_method_data = is_method_data
+        [self.__dict__.update({k: v}) if not isinstance(v, dict) else self.__dict__.update(
+            {k: VkBotLight_Data.VkBotLight_DataStruct(**v)}) for k, v in data.items() if k != "secret"]
 
     def __str__(self):
-        return f"<{self.__class__.__name__}.{self._type.upper()} Type>"
+        return f"<{self.__class__.__name__}.{self._type.upper()} {'Method' if self.is_method_data else 'Type'} {self.__dict__}> "
 
 
 class VkBotLight_Logger:
@@ -309,6 +413,17 @@ class VkBotLight_Logger:
 
         with open(f"{self.log_dir}/{dt.year}_{dt.month}_{dt.day}.txt", "a+") as file:
             file.write(f"[{dt.year}-{dt.month}-{dt.day} {time_}] {self.get(log_type)} {log_text}\n")
+
+
+class VkBotLight_CaptchaHandler:
+    def __init__(self, rucaptcha_key):
+        self.rucaptcha_key = rucaptcha_key
+
+    def get_photo(self):
+        pass
+
+    def solve_captcha(self):
+        pass
 
 
 class VkBotLight_Error(Exception): ...
