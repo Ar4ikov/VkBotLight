@@ -314,7 +314,7 @@ class VkBotLight_Keyboard:
     def generate_pay_hash(group_id, aid):
         return f"action=transfer-to-group&group_id={group_id}&aid={aid}"
 
-    def text(self, text, color: ButtonColors = ButtonColors.VK_PRIMARY, payload: str = None, returns=True):
+    def text(self, text, color: ButtonColors = ButtonColors.VK_PRIMARY, payload: dict = None, returns=True):
         button = {"action": {"type": "text", "payload": payload, "label": text}, "color": color.value}
 
         self.append(button)
@@ -322,7 +322,7 @@ class VkBotLight_Keyboard:
         if returns:
             return button
 
-    def open_link(self, text, link, payload: str = None, returns=True):
+    def open_link(self, text, link, payload: dict = None, returns=True):
         button = {"action": {"type": "open_link", "link": link, "label": text, "payload": payload}}
 
         self.append(button)
@@ -330,7 +330,7 @@ class VkBotLight_Keyboard:
         if returns:
             return button
 
-    def location(self, payload: str = None, returns=True):
+    def location(self, payload: dict = None, returns=True):
         button = {"action": {"type": "location", "payload": payload}}
 
         self.append_single(button)
@@ -338,7 +338,7 @@ class VkBotLight_Keyboard:
         if returns:
             return button
 
-    def vkpay(self, pay_hash: str, payload: str = None, returns=True):
+    def vkpay(self, pay_hash: str, payload: dict = None, returns=True):
         button = {"action": {"type": "vkpay", "hash": pay_hash, "payload": payload}}
 
         self.append_single(button)
@@ -346,7 +346,7 @@ class VkBotLight_Keyboard:
         if returns:
             return button
 
-    def open_app(self, app_id: int, owner_id: int, app_name: str = None, app_hash: str = "open_app", payload: str = None,
+    def open_app(self, app_id: int, owner_id: int, app_name: str = None, app_hash: str = "open_app", payload: dict = None,
                  returns=True):
         button = {"action": {"type": "open_app", "app_id": app_id, "owner_id": owner_id, "payload": payload,
                              "label": app_name, "hash": app_hash}}

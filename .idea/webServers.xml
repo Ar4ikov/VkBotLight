@@ -5,7 +5,7 @@
       <webServer id="3a5d3613-295b-4cc4-82aa-a2fcb53604e3" name="vk-bot-light" url="http://185.228.232.67">
         <fileTransfer host="185.228.232.67" port="22" rootFolder="/root" accessType="SFTP">
           <advancedOptions>
-            <advancedOptions controlEncoding="utf-8" dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+            <advancedOptions controlEncoding="utf-8" dataProtectionLevel="Private" muteSftpMessages="true" passiveMode="true" shareSSLContext="true" />
           </advancedOptions>
           <option name="port" value="22" />
         </fileTransfer>
