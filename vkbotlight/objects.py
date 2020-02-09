@@ -146,8 +146,12 @@ class VkBotLight_Thread(Thread):
 
 class VkBotLight_ApiPool(VkBotLight_Thread):
     class VkMethodObject:
-        def __init__(self, method, **data):
+        def __init__(self, method, method_timeout=None, **data):
             self.method: str = method
+            self.method_timeout = None
+            if method_timeout is not None:
+                self.method_timeout = method_timeout
+
             self.data = data
 
             self.uuid = uuid()
@@ -164,6 +168,9 @@ class VkBotLight_ApiPool(VkBotLight_Thread):
                 self.response = response
 
             return True
+
+        def get_timeout(self):
+            return self.method_timeout
 
     def __init__(self, root, default_timeout=.34):
         super().__init__(root)
@@ -202,10 +209,14 @@ class VkBotLight_ApiPool(VkBotLight_Thread):
 
     def run(self):
         while True:
-
             method: VkBotLight_ApiPool.VkMethodObject = next(self.get_queue_method())
 
             if method:
+                if method.get_timeout() is None:
+                    sleep(self.default_timeout)
+                else:
+                    sleep(method.get_timeout())
+
                 response = self.root.make_request(method.method, **method.data)
                 method.set_response(response)
 
@@ -215,7 +226,7 @@ class VkBotLight_ApiPool(VkBotLight_Thread):
                 return True
 
             # print(f"{self.name} is alive")
-            sleep(self.default_timeout)
+            sleep(0.001)
 
     def await_for_response(self, method: VkMethodObject):
         response = None

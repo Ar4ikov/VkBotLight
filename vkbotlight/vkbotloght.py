@@ -61,7 +61,12 @@ class VkBotLight:
                 if args:
                     raise ValueError("Do not use non-named arguments. ")
 
-                method = VkBotLight_ApiPool.VkMethodObject(self.method, **kwargs)
+                method_timeout = None
+
+                if "method_timeout" in kwargs:
+                    method_timeout = kwargs.pop("method_timeout")
+
+                method = VkBotLight_ApiPool.VkMethodObject(self.method, method_timeout=method_timeout, **kwargs)
                 self.root.method_pool.queue(method)
                 return self.root.method_pool.await_for_response(method)
 
