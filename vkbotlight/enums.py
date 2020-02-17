@@ -44,6 +44,7 @@ class VkBotLight_Events(Enum):
     BOARD_POST_DELETE = "board_post_delete"
 
     # Товары
+
     MARKET_COMMENT_NEW = "market_comment_new"
     MARKET_COMMENT_EDIT = "market_comment_edit"
     MARKET_COMMENT_RESTORE = "market_comment_restore"
@@ -62,3 +63,10 @@ class VkBotLight_Events(Enum):
     GROUP_CHANGE_PHOTO = "group_change_photo"
     VKPAY_TRANSACTION = "vkpay_transaction"
     APP_PAYLOAD = "app_payload"
+
+
+class VkBotLight_Priority(Enum):
+    LOW_PRIORITY = 0
+    DEFAULT_PRIORITY = 1
+    HIGH_PRIORITY = 2
+    MAIN_PRIORITY = 3

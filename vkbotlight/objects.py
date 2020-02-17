@@ -13,7 +13,7 @@ from flask import Flask, session, jsonify, render_template
 from flask import request as fr
 import logging
 
-from vkbotlight.enums import VkBotLight_Events
+from vkbotlight.enums import VkBotLight_Events, VkBotLight_Priority
 
 
 class PollingTask(Thread):
@@ -258,18 +258,25 @@ class VkBotLight_Emitter(VkBotLight_Thread):
         else:
             yield None
 
-    def on(self, event: VkBotLight_Events):
+    def on(self, event: VkBotLight_Events, priority=None):
+        if priority is None:
+            priority = VkBotLight_Priority.DEFAULT_PRIORITY
+
         def deco(func, **data):
-            self.callers.append({"event": event.value, "func": func, "data": data})
+            self.callers.append({"event": event.value, "func": func, "data": data, "priority": priority})
 
         return deco
 
     def emit(self, event, data):
 
-        event = [x for x in self.callers if x["event"] == event]
+        events = [x for x in self.callers if x["event"] == event][::-1]
+        events = sorted(events, key=lambda x: x["priority"].value)
 
-        if event:
-            self.events.append([event[0], data])
+        if events:
+            for e_ in events:
+                self.events.append([e_, data])
+
+        return True
 
     def run(self):
         # print(" * Starting Emitter Thread...")
