@@ -270,11 +270,12 @@ class VkBotLight_Emitter(VkBotLight_Thread):
 
     def emit(self, event, data):
 
-        events = [x for x in self.callers if x["event"] == event][::-1]
+        events = [x for x in self.callers if x["event"] == event or x["event"] == VkBotLight_Events.EVENTS_ALL.value][::-1]
         events = sorted(events, key=lambda x: x["priority"].value)
 
         if events:
             for e_ in events:
+                data.event = event
                 self.events.append([e_, data])
 
         return True

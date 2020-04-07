@@ -5,6 +5,9 @@ from enum import Enum
 
 
 class VkBotLight_Events(Enum):
+    # Все эвенты
+    EVENTS_ALL = "events_all"
+
     # Сообщения
     MESSAGE_NEW = "message_new"
     MESSAGE_REPLY = "message_reply"
