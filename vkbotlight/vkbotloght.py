@@ -14,7 +14,7 @@ from vkbotlight.objects import VkBotLight_Emitter, VkBotLight_ApiPool, VkBotLigh
 #  * Написать юнит-тесты и документацию;
 
 class VkBotLight:
-    def __init__(self, access_token, api_version=None):
+    def __init__(self, access_token, api_version=None, default_timeout=.34):
 
         self.logging = VkBotLight_Logger("logs")
 
@@ -25,7 +25,7 @@ class VkBotLight:
         # Ивент пул, метод пул и полинг пул
         self.polling_thread = type("Thread", (object,), {"is_alive": lambda: False})
         self.event = VkBotLight_Emitter(self)
-        self.method_pool = VkBotLight_ApiPool(self)
+        self.method_pool = VkBotLight_ApiPool(self, default_timeout=default_timeout)
 
         self.HEADERS = loads(open(path.join(path.dirname(__file__), "headers.json"), "r").read())
 

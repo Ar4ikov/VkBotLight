@@ -1,18 +1,21 @@
 # | Created by Ar4ikov
 # | Время: 27.12.2019 - 14:15
 
+from _io import BufferedReader
 import datetime
 from enum import Enum
 from json import dumps
 from os import path, mkdir
 from threading import Thread, main_thread
 from time import sleep
-from typing import List
+from typing import List, Optional
 from uuid import uuid4 as uuid
 
 from flask import Flask, session, jsonify, render_template
 from flask import request as fr
 import logging
+
+from requests import post
 
 from vkbotlight.enums import VkBotLight_Events, VkBotLight_Priority
 
@@ -473,3 +476,78 @@ class Final:
 
     def get(self):
         return self.value
+
+
+class VkBotLight_Upload:
+    class UploadType(Enum):
+        ALBUM_PHOTO = "photos.getUploadServer"
+        WALL_PHOTO = "photos.getWallUploadServer"
+        OWNER_PHOTO = "photos.getOwnerPhotoUploadServer"
+        MESSAGE_PHOTO = "photos.getMessageUploadServer"
+        CHAT_PHOTO = "photos.getChatUploadServer"
+        MARKET_PHOTO = "photos.getMarketUploadServer"
+        MARKET_ALBUM_PHOTO = "photos.getMarketAlbumUploadServer"
+        AUDIO = "audio.getUploadServer"
+        VIDEO = "video.save"
+        DOCS_DEFAULT = "docs.getUploadServer"
+        DOCS_WALL = "docs.getWallUploadServer"
+        DOCS_MESSAGE = "docs.getMessageUploadServer"
+        PUBLIC_COVER_PHOTO = "photos.getOwnerCoverPhotoUploadServer"
+        AUDIO_MESSAGE = "docs.getMessageUploadServer"
+
+    @staticmethod
+    def group_files(files, maximum=5):
+        return [files[x:x + maximum] for x in range(0, len(files), maximum)]
+
+    def album_photo(self, files: List[BufferedReader], album_id, group_id=None):
+        if group_id is None:
+            group_id = 0
+
+        files = self.group_files(files, 5)
+
+        request_api = self.root.methods.photos.getUploadServer(album_id=album_id, group_id=group_id)["response"]
+        upload_url, user_id = request_api["upload_url"], request_api["user_id"]
+
+        response = []
+
+        for file_group in files:
+            file_group = {f"file{x}": file_group[x] for x in range(1, 5)}
+
+            rs = post(upload_url, data=file_group).json()
+            server, photos_list, aid, hash_ = rs["server"], rs["photos_list"], rs["aid"], rs["hash"]
+
+            response_api = self.root.methods.photos.save(server=server, photos_list=photos_list, aid=aid, hash=hash_)
+            for item in response_api["response"]:
+                response.append(f"{item['owner_id']}_{item['id']}")
+
+        return response
+
+    def wall_photo(self, files: List[BufferedReader], group_id=None):
+        if group_id is None:
+            group_id = 0
+
+        files = self.group_files(files, 5)
+
+        request_api = self.root.methods.photos.getWallUploadServer(group_id=group_id)["response"]
+        album_id, upload_url, user_id = request_api["album_id"], request_api["upload_url"], request_api["user_id"]
+
+        response = []
+
+        for file_group in files:
+            pass
+
+    def owner_photo(self):
+        pass
+
+    # TODO: дописать функции загрузки файлов на сервер
+
+    def __init__(self, root, files: List[str], upload_type: Optional[UploadType] = None):
+        if upload_type is None:
+            upload_type = self.UploadType.MESSAGE_PHOTO
+
+        self.root = root
+        self.files = [open(x, "rb") for x in files]
+        self.upload_type = upload_type
+
+    def get(self):
+        return {}
