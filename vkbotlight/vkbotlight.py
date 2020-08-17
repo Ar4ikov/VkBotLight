@@ -14,9 +14,10 @@ from vkbotlight.objects import VkBotLight_Emitter, VkBotLight_ApiPool, VkBotLigh
 #  * Написать юнит-тесты и документацию;
 
 class VkBotLight:
-    def __init__(self, access_token, api_version=None, default_timeout=.34):
+    def __init__(self, access_token, api_version=None, default_timeout=.34, enable_api_logs=False):
 
         self.logging = VkBotLight_Logger("logs")
+        self.enable_api_logs = enable_api_logs
 
         # Сессия запросов
         self.name = "VkBotLight-1"
@@ -77,7 +78,7 @@ class VkBotLight:
     def __str__(self):
         return f"<{self.__class__.__name__} -> Bot Id: {self.TOKEN_INFO.get('id') or self.TOKEN_INFO.get('group_id')}>"
 
-    def make_request(self, method, **data):
+    def make_request(self, method, return_url=True, **data):
         request_ = f"{str(self.API_URL)}/method/{method}"
         data.update({"access_token": str(self.ACCESS_TOKEN), "v": str(self.API_VERSION)})
 
@@ -88,6 +89,9 @@ class VkBotLight:
             if response.json().get("error"):
                 if response.json().get("error_code") == 100:
                     pass
+
+            if return_url:
+                return response.json(), response.url
 
             return response.json()
 

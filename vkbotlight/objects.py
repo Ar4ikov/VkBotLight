@@ -16,6 +16,7 @@ from flask import request as fr
 import logging
 
 from requests import post
+from urllib.parse import urlparse, parse_qs, urljoin
 
 from vkbotlight.enums import VkBotLight_Events, VkBotLight_Priority
 
@@ -221,8 +222,22 @@ class VkBotLight_ApiPool(VkBotLight_Thread):
                 else:
                     sleep(method.get_timeout())
 
-                response = self.root.make_request(method.method, **method.data)
+                response, url = self.root.make_request(method.method, **method.data)
                 method.set_response(response)
+
+                if self.root.enable_api_logs is True:
+                    url_parsed = urlparse(url)
+
+                    query = parse_qs(url_parsed.query, keep_blank_values=True)
+                    query.pop("access_token", None)
+
+                    query_build = "&".join([str(k) + "=" + str(v) for k, v in query.items()])
+                    url_logging = f"{url_parsed.scheme}://{url_parsed.netloc}{url_parsed.path}?{query_build}"
+
+                    self.root.logging.log(
+                        self.root.logging.Types.SYSTEM_LOGGING, 
+                        f"Request: {url_logging}; Response: {response}"
+                    )
 
                 self.make_done(method)
 
@@ -416,10 +431,10 @@ class VkBotLight_Data:
 
 class VkBotLight_Logger:
     class Types(Enum):
-        FUNCTION_LOGGING = "[LOG]"
-        WARNING_LOGGING = "[WARN]"
-        ERROR_LOGGING = "[ERROR]"
-        SYSTEM_LOGGING = "[SYSTEM]"
+        FUNCTION_LOGGING = "LOG"
+        WARNING_LOGGING = "WARN"
+        ERROR_LOGGING = "ERROR"
+        SYSTEM_LOGGING = "SYSTEM"
 
     @staticmethod
     def get(e_: Enum):
@@ -436,7 +451,7 @@ class VkBotLight_Logger:
         time_ = str(datetime.datetime.now().time()).split(".")[0]
 
         with open(f"{self.log_dir}/{dt.year}_{dt.month}_{dt.day}.txt", "a+") as file:
-            file.write(f"[{dt.year}-{dt.month}-{dt.day} {time_}] {self.get(log_type)} {log_text}\n")
+            file.write(f"[{dt.year}-{dt.month}-{dt.day} {time_}] [{self.get(log_type.value)}] {log_text}\n")
 
 
 class VkBotLight_CaptchaHandler:
@@ -499,9 +514,15 @@ class VkBotLight_Upload:
     def group_files(files, maximum=5):
         return [files[x:x + maximum] for x in range(0, len(files), maximum)]
 
-    def album_photo(self, files: List[BufferedReader], album_id, group_id=None):
+    @staticmethod
+    def is_group(group_id=None):
         if group_id is None:
             group_id = 0
+
+        return group_id
+
+    def album_photo(self, files: List[BufferedReader], album_id, group_id=None):
+        group_id = self.is_group(group_id)
 
         files = self.group_files(files, 5)
 
@@ -523,8 +544,7 @@ class VkBotLight_Upload:
         return response
 
     def wall_photo(self, files: List[BufferedReader], group_id=None):
-        if group_id is None:
-            group_id = 0
+        group_id = self.is_group(group_id)
 
         files = self.group_files(files, 5)
 

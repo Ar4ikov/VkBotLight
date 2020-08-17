@@ -1,7 +1,7 @@
 # | Created by Ar4ikov
 # | Время: 27.12.2019 - 00:42
 
-from vkbotlight.vkbotloght import VkBotLight
+from vkbotlight.vkbotlight import VkBotLight
 from vkbotlight.objects import VkBotLight_Logger
 from vkbotlight.objects import VkBotLight_PollingType
 from vkbotlight.objects import VkBotLight_Keyboard
