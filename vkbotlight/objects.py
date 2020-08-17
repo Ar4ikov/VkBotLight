@@ -451,7 +451,7 @@ class VkBotLight_Logger:
         time_ = str(datetime.datetime.now().time()).split(".")[0]
 
         with open(f"{self.log_dir}/{dt.year}_{dt.month}_{dt.day}.txt", "a+") as file:
-            file.write(f"[{dt.year}-{dt.month}-{dt.day} {time_}] [{self.get(log_type.value)}] {log_text}\n")
+            file.write(f"[{dt.year}-{dt.month}-{dt.day} {time_}] [{self.get(log_type)}] {log_text}\n")
 
 
 class VkBotLight_CaptchaHandler:
