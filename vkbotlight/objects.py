@@ -222,7 +222,7 @@ class VkBotLight_ApiPool(VkBotLight_Thread):
                 else:
                     sleep(method.get_timeout())
 
-                response, url = self.root.make_request(method.method, **method.data)
+                response, url = self.root.make_request(method=method.method, return_url=True, **method.data)
                 method.set_response(response)
 
                 if self.root.enable_api_logs is True:
@@ -231,7 +231,7 @@ class VkBotLight_ApiPool(VkBotLight_Thread):
                     query = parse_qs(url_parsed.query, keep_blank_values=True)
                     query.pop("access_token", None)
 
-                    query_build = "&".join([str(k) + "=" + str(v) for k, v in query.items()])
+                    query_build = "&".join([str(k) + "=" + str(",".join(str(x) for x in v)) for k, v in query.items()])
                     url_logging = f"{url_parsed.scheme}://{url_parsed.netloc}{url_parsed.path}?{query_build}"
 
                     self.root.logging.log(

@@ -78,7 +78,7 @@ class VkBotLight:
     def __str__(self):
         return f"<{self.__class__.__name__} -> Bot Id: {self.TOKEN_INFO.get('id') or self.TOKEN_INFO.get('group_id')}>"
 
-    def make_request(self, method, return_url=True, **data):
+    def make_request(self, method, return_url=False, **data):
         request_ = f"{str(self.API_URL)}/method/{method}"
         data.update({"access_token": str(self.ACCESS_TOKEN), "v": str(self.API_VERSION)})
 
